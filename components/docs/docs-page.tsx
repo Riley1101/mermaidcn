@@ -547,12 +547,6 @@ export function DocsPage() {
                 </h3>
                 <InstallCommand command="npx shadcn@latest add https://mermaidcn.vercel.app/r/zoom-pan.json" />
               </div>
-              <div>
-                <h3 className="text-foreground mb-2 text-sm font-semibold">
-                  Mermaid Playground
-                </h3>
-                <InstallCommand command="npx shadcn@latest add https://mermaidcn.vercel.app/r/mermaid-playground.json" />
-              </div>
             </div>
 
             <div>
