@@ -22,11 +22,26 @@
       "type": "registry:component",
       "title": "ZoomPan",
       "description": "A generic zoom and pan wrapper for any React content. Supports scroll-to-zoom, click-drag pan, and pinch-to-zoom.",
+      "dependencies": ["lucide-react"],
       "files": [
         {
           "path": "components/zoom-pan.tsx",
           "type": "registry:component",
           "target": "components/mermaidcn/zoom-pan.tsx"
+        }
+      ]
+    },
+    {
+      "name": "mermaid-themes",
+      "type": "registry:lib",
+      "title": "Mermaid Themes",
+      "description": "A collection of themes and helpers for Mermaid diagrams.",
+      "dependencies": [],
+      "files": [
+        {
+          "path": "lib/mermaid-themes.ts",
+          "type": "registry:lib",
+          "target": "lib/mermaid-themes.ts"
         }
       ]
     }

@@ -47,6 +47,13 @@ const mermaidProps = [
     type: "(error: string) => void",
     description: "Callback fired with the error message on render failure.",
   },
+  {
+    name: "debounceTime",
+    type: "number",
+    default: "300",
+    description:
+      "Delay in ms before rendering triggers (useful for live editors).",
+  },
 ];
 
 const zoomPanProps = [
@@ -60,7 +67,7 @@ const zoomPanProps = [
     name: "controls",
     type: "(api) => ReactNode",
     description:
-      "Render-prop exposing zoomIn, zoomOut, resetZoom, and scalePercent.",
+      "Render-prop exposing zoomIn, zoomOut, resetZoom, centerView, and scalePercent.",
   },
   {
     name: "className",
@@ -90,6 +97,17 @@ const zoomPanProps = [
     type: "number",
     default: "0.1",
     description: "Scale increment per scroll tick.",
+  },
+  {
+    name: "isLoading",
+    type: "boolean",
+    default: "false",
+    description: "Whether the component is in a loading state.",
+  },
+  {
+    name: "loadingFallback",
+    type: "React.ReactNode",
+    description: "Custom UI to show during the loading state.",
   },
 ];
 
@@ -244,7 +262,6 @@ export function DocsPage() {
               A customizable, shadcn-compatible Mermaid.js renderer with
               built-in zoom and pan. Copy. Paste. Render.
             </p>
-            <InstallCommand command="npx shadcn@latest add https://mermaidcn.vercel.app/r/mermaid.json" />
           </div>
           <div className="mt-8 border-border overflow-hidden rounded-xl border shadow-2xl">
             <MermaidPlayground />
@@ -290,7 +307,7 @@ export function DocsPage() {
               <h3 className="text-foreground mb-3 text-sm font-semibold">
                 Preview
               </h3>
-              <LivePreview label="Basic Mermaid">
+              <LivePreview label="Basic Mermaid" code={BASIC_EXAMPLE}>
                 <Mermaid
                   chart={`sequenceDiagram
     participant C as Client
@@ -313,7 +330,7 @@ export function DocsPage() {
               <h3 className="text-foreground mb-3 text-sm font-semibold">
                 Preview
               </h3>
-              <LivePreview label="Forest Theme">
+              <LivePreview label="Forest Theme" code={THEMED_EXAMPLE}>
                 <Mermaid
                   chart={`flowchart LR
     A([Input]) --> B[Process]
@@ -369,7 +386,10 @@ export function DocsPage() {
               <h3 className="text-foreground mb-3 text-sm font-semibold">
                 Preview
               </h3>
-              <LivePreview label="Zoom & Pan (scroll to zoom, drag to pan)">
+              <LivePreview
+                label="Zoom & Pan (scroll to zoom, drag to pan)"
+                code={ZOOM_EXAMPLE}
+              >
                 <ZoomPan
                   className="h-[350px]"
                   controls={({ zoomIn, zoomOut, resetZoom, scalePercent }) => (
@@ -519,7 +539,7 @@ export function DocsPage() {
                 <h3 className="text-foreground mb-2 text-sm font-semibold">
                   Mermaid Renderer
                 </h3>
-                <InstallCommand command="npx shadcn@latest add https://mermaidcn.vercel.app/r/mermaid.json" />
+                <InstallCommand command="npx shadcn@latest add https://mermaidcn.vercel.app/r/mermaid.json https://mermaidcn.vercel.app/r/mermaid-themes.json" />
               </div>
               <div>
                 <h3 className="text-foreground mb-2 text-sm font-semibold">

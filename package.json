@@ -1,6 +1,7 @@
 {
   "name": "mermaidcn",
   "version": "0.1.0",
+  "author": "Riley1101",
   "private": true,
   "scripts": {
     "dev": "next dev",

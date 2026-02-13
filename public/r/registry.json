@@ -29,6 +29,20 @@
           "target": "components/mermaidcn/zoom-pan.tsx"
         }
       ]
+    },
+    {
+      "name": "mermaid-themes",
+      "type": "registry:lib",
+      "title": "Mermaid Themes",
+      "description": "A collection of themes and helpers for Mermaid diagrams.",
+      "dependencies": [],
+      "files": [
+        {
+          "path": "lib/mermaid-themes.ts",
+          "type": "registry:lib",
+          "target": "lib/mermaid-themes.ts"
+        }
+      ]
     }
   ]
 }
