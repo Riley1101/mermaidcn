@@ -18,6 +18,7 @@ import {
   ZoomOutIcon,
   LocateFixedIcon,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const mermaidProps = [
   {
@@ -237,6 +238,7 @@ export function DocsPage() {
               GitHub
               <ExternalLinkIcon className="h-3 w-3" />
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </header>
