@@ -179,29 +179,6 @@ export function CustomZoom() {
   )
 }`;
 
-const PLAYGROUND_EXAMPLE = `import { MermaidPlayground } from "@/components/mermaidcn/mermaid-playground"
-
-export function MyPlayground() {
-  return (
-    <div className="h-[600px] w-full">
-      <MermaidPlayground />
-    </div>
-  )
-}`;
-
-const playgroundProps = [
-  {
-    name: "defaultValue",
-    type: "string",
-    description: "Initial Mermaid diagram code.",
-  },
-  {
-    name: "className",
-    type: "string",
-    description: "Additional CSS classes for the container.",
-  },
-];
-
 export function DocsPage() {
   return (
     <div className="bg-background min-h-screen">
@@ -472,51 +449,6 @@ export function DocsPage() {
                 component.
               </p>
               <CodeBlock code={HOOK_EXAMPLE} filename="custom-zoom.tsx" />
-            </div>
-          </div>
-        </section>
-
-        <Separator />
-
-        {/* MermaidPlayground Component */}
-        <section className="py-16">
-          <div className="flex flex-col gap-8">
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-foreground text-2xl font-bold tracking-tight">
-                  {"<MermaidPlayground />"}
-                </h2>
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  component
-                </Badge>
-              </div>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                A complete Mermaid editor and preview environment. Includes
-                theme selection, templates, and live editing capabilities.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-foreground mb-3 text-sm font-semibold">
-                Props
-              </h3>
-              <PropsTable props={playgroundProps} />
-            </div>
-
-            <div>
-              <h3 className="text-foreground mb-3 text-sm font-semibold">
-                Usage
-              </h3>
-              <CodeBlock code={PLAYGROUND_EXAMPLE} filename="playground.tsx" />
-            </div>
-
-            <div>
-              <h3 className="text-foreground mb-3 text-sm font-semibold">
-                Preview
-              </h3>
-              <div className="mt-4 border-border overflow-hidden rounded-xl border shadow-sm">
-                <MermaidPlayground className="min-h-[500px]" />
-              </div>
             </div>
           </div>
         </section>

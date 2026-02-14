@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { mermaidThemes, type MermaidCustomTheme } from "@/lib/mermaid-themes";
 
@@ -27,6 +26,7 @@ const BUILTIN_THEMES = new Set<string>([
 
 export interface MermaidConfig {
   theme?: MermaidTheme;
+  darkMode?: boolean;
   look?: "classic" | "handdrawn";
   themeVariables?: Record<string, string>;
   flowchart?: {
@@ -78,10 +78,6 @@ function useMermaid({
     "idle" | "loading" | "success" | "error"
   >("idle");
 
-  // Detect site dark mode to auto-switch Mermaid theme
-  const { resolvedTheme: siteTheme } = useTheme();
-  const isDark = siteTheme === "dark";
-
   // Unique ID for this diagram instance
   const id = React.useId().replace(/:/g, "");
 
@@ -132,7 +128,8 @@ function useMermaid({
         const explicitTheme = parsedConfig.theme as MermaidBuiltinTheme;
         const resolvedMermaidTheme = isCustomTheme
           ? "base"
-          : (!explicitTheme || explicitTheme === "default") && isDark
+          : (!explicitTheme || explicitTheme === "default") &&
+              parsedConfig.darkMode
             ? "dark"
             : (explicitTheme ?? "default");
 
@@ -194,7 +191,7 @@ function useMermaid({
     return () => {
       isCancelled = true;
     };
-  }, [debouncedChart, configString, id, isDark]);
+  }, [debouncedChart, configString, id]);
 
   return { svg, error, status, renderRef };
 }
