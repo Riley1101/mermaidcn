@@ -22,7 +22,7 @@ export function InstallCommand({ command, className }: InstallCommandProps) {
     <button
       onClick={handleCopy}
       className={cn(
-        "bg-foreground text-background group flex w-full max-w-xl items-center gap-3 rounded-lg px-4 py-3 font-mono text-sm transition-opacity hover:opacity-90",
+        "bg-muted text-foreground border border-border group flex w-full max-w-xl items-center gap-3 rounded-lg px-4 py-3 font-mono text-sm transition-opacity hover:opacity-90",
         className
       )}
     >
