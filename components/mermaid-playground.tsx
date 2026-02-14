@@ -18,6 +18,7 @@ import {
 } from "@/components/mermaid";
 import { diagramTemplates } from "@/lib/diagram-templates";
 import { mermaidThemes, type MermaidCustomTheme } from "@/lib/mermaid-themes";
+import { useTheme } from "next-themes";
 
 const THEMES: { label: string; value: string; color: string }[] = [
   { label: "Default", value: "default", color: "#6366f1" },
@@ -48,6 +49,9 @@ export function MermaidPlayground({
   const [look, setLook] = React.useState<"classic" | "handdrawn">("classic");
   const [svgOutput, setSvgOutput] = React.useState<string>("");
 
+  const { resolvedTheme: siteTheme } = useTheme();
+  const darkMode = siteTheme === "dark";
+
   // Config object for Mermaid
   const config = React.useMemo<MermaidConfig>(() => {
     const isCustomTheme = ![
@@ -59,12 +63,13 @@ export function MermaidPlayground({
     ].includes(theme);
     return {
       theme: isCustomTheme ? "base" : (theme as MermaidBuiltinTheme),
+      darkMode,
       look,
       themeVariables: isCustomTheme
         ? mermaidThemes[theme as MermaidCustomTheme]
         : undefined,
     };
-  }, [theme, look]);
+  }, [theme, look, darkMode]);
 
   const handleTemplateChange = (templateId: string) => {
     const template = diagramTemplates.find((t) => t.id === templateId);

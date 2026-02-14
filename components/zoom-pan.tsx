@@ -54,14 +54,12 @@ export function ZoomPan({
   });
 
   // -- Refs for High-Perf Updates --
-  // currentRef: The actual value currently applied to the DOM
   const currentRef = React.useRef({
     scale: initialScale,
     x: 0,
     y: 0,
   });
 
-  // targetRef: Where the user wants to go (updated by gestures/buttons)
   const targetRef = React.useRef({
     scale: initialScale,
     x: 0,
@@ -73,10 +71,12 @@ export function ZoomPan({
   const panStartRef = React.useRef({ x: 0, y: 0 });
   const targetStartRef = React.useRef({ x: 0, y: 0 });
 
-  // Momentum
+  // Momentum & Physics
   const velocityRef = React.useRef({ x: 0, y: 0 });
   const lastTimeRef = React.useRef(0);
-  const lastInteractionTimeRef = React.useRef({ x: 0, y: 0 });
+  // Track last frame time for Delta Time calculation
+  const lastFrameTimeRef = React.useRef(0);
+
   const rafRef = React.useRef<number | null>(null);
 
   // Touch
@@ -96,7 +96,8 @@ export function ZoomPan({
     if (!contentRef.current) return;
     const { x, y, scale } = currentRef.current;
 
-    contentRef.current.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    // Use translate3d for GPU acceleration
+    contentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     contentRef.current.style.transition = isImmediate
       ? "none"
       : "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)";
@@ -108,52 +109,70 @@ export function ZoomPan({
       scale: currentRef.current.scale,
       translateX: currentRef.current.x,
       translateY: currentRef.current.y,
-      isImmediate: prev.isImmediate, // Keep whatever transition mode we were in
+      isImmediate: prev.isImmediate,
     }));
   }, []);
 
   const startAnimation = React.useCallback(() => {
     if (rafRef.current) return;
 
-    const step = () => {
+    lastFrameTimeRef.current = performance.now();
+
+    const step = (timestamp: number) => {
+      const dt = timestamp - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = timestamp;
+
+      // Skip huge time jumps (tab inactive)
+      if (dt > 100) {
+        rafRef.current = requestAnimationFrame(step);
+        return;
+      }
+
+      // Time scale factor (normalized to ~60fps)
+      const timeScale = dt / 16.667;
+
       const target = targetRef.current;
       const current = currentRef.current;
       const velocity = velocityRef.current;
 
-      // 1. Apply Momentum if not dragging
+      // 1. Apply Momentum if not interacting
       if (!isDragging.current && !isPinching.current) {
-        if (Math.abs(velocity.x) > 0.01 || Math.abs(velocity.y) > 0.01) {
-          target.x += velocity.x;
-          target.y += velocity.y;
-          velocity.x *= 0.92; // Friction
-          velocity.y *= 0.92;
+        // Friction adjusted for time
+        // 0.95 is smoother than 0.92
+        const friction = Math.pow(0.95, timeScale);
+
+        if (Math.abs(velocity.x) > 0.05 || Math.abs(velocity.y) > 0.05) {
+          target.x += velocity.x * timeScale;
+          target.y += velocity.y * timeScale;
+
+          velocity.x *= friction;
+          velocity.y *= friction;
         } else {
           velocity.x = 0;
           velocity.y = 0;
         }
       }
 
-      // 2. Interpolate (Lerp) actual towards target for "Slow Easing"
-      // Panning easing
-      const lerpPan = 0.1;
-      // Zoom easing
-      const lerpZoom = 0.06;
+      // 2. Smooth Interpolation (Lerp)
+      // Adjusted lerp factors for time-independence
+      const panFactor = 1 - Math.pow(1 - 0.12, timeScale);
+      const zoomFactor = 1 - Math.pow(1 - 0.12, timeScale);
 
       const dx = target.x - current.x;
       const dy = target.y - current.y;
       const ds = target.scale - current.scale;
 
-      current.x += dx * lerpPan;
-      current.y += dy * lerpPan;
-      current.scale += ds * lerpZoom;
+      current.x += dx * panFactor;
+      current.y += dy * panFactor;
+      current.scale += ds * zoomFactor;
 
       updateDom(true);
 
-      // 3. Check if we should stop
+      // 3. Stop Condition
       const isStillMoving =
         Math.abs(dx) > 0.1 ||
         Math.abs(dy) > 0.1 ||
-        Math.abs(ds) > 0.001 ||
+        Math.abs(ds) > 0.0001 || // tighter zoom tolerance
         Math.abs(velocity.x) > 0.1 ||
         Math.abs(velocity.y) > 0.1;
 
@@ -161,6 +180,11 @@ export function ZoomPan({
         rafRef.current = requestAnimationFrame(step);
       } else {
         rafRef.current = null;
+        // Snap to target to prevent micro-drifting
+        current.x = target.x;
+        current.y = target.y;
+        current.scale = target.scale;
+        updateDom(true);
         commitToState();
       }
     };
@@ -169,21 +193,30 @@ export function ZoomPan({
   }, [updateDom, commitToState]);
 
   React.useEffect(() => {
-    targetRef.current = {
-      scale: zoomPan.scale,
-      x: zoomPan.translateX,
-      y: zoomPan.translateY,
-    };
-
-    if (zoomPan.isImmediate) {
-      // For gestures, the loop is already running or will be started
-      startAnimation();
+    // Only update refs from state if we aren't animating
+    // This prevents state updates from "fighting" the physics loop
+    if (!rafRef.current) {
+      targetRef.current = {
+        scale: zoomPan.scale,
+        x: zoomPan.translateX,
+        y: zoomPan.translateY,
+      };
+      // If purely state-driven (buttons), sync current immediately
+      if (!zoomPan.isImmediate) {
+        currentRef.current = { ...targetRef.current };
+        updateDom(false);
+      }
     } else {
-      // For buttons, use CSS transitions for consistency, but sync internal Refs
-      currentRef.current = { ...targetRef.current };
-      updateDom(false);
+      // If animating, ensure target matches state only if it was a button press
+      if (!zoomPan.isImmediate) {
+        targetRef.current = {
+          scale: zoomPan.scale,
+          x: zoomPan.translateX,
+          y: zoomPan.translateY,
+        };
+      }
     }
-  }, [zoomPan, updateDom, startAnimation]);
+  }, [zoomPan, updateDom]);
 
   // -- Zoom Controls (Button based) --
 
@@ -195,9 +228,9 @@ export function ZoomPan({
 
   const applyZoomToPoint = React.useCallback(
     (delta: number, point: { x: number; y: number }) => {
-      const prevScale = zoomPan.scale;
-      const prevX = zoomPan.translateX;
-      const prevY = zoomPan.translateY;
+      const prevScale = targetRef.current.scale; // Use target for calculations
+      const prevX = targetRef.current.x;
+      const prevY = targetRef.current.y;
 
       const newScale = Math.min(
         maxScale,
@@ -208,7 +241,17 @@ export function ZoomPan({
       const newX = point.x - (point.x - prevX) * ratio;
       const newY = point.y - (point.y - prevY) * ratio;
 
-      // Update via React state to trigger smooth transition
+      // Update Target Ref immediately for the loop
+      targetRef.current = {
+        scale: newScale,
+        x: newX,
+        y: newY,
+      };
+
+      // Trigger state update to handle UI but keep isImmediate=false for CSS transition
+      // We manually start animation to smooth the ref values
+      startAnimation();
+
       setZoomPan({
         scale: newScale,
         translateX: newX,
@@ -216,7 +259,7 @@ export function ZoomPan({
         isImmediate: false,
       });
     },
-    [maxScale, minScale, zoomPan.scale, zoomPan.translateX, zoomPan.translateY],
+    [maxScale, minScale, startAnimation],
   );
 
   const zoomIn = React.useCallback(() => {
@@ -228,13 +271,15 @@ export function ZoomPan({
   }, [zoomStep, applyZoomToPoint, getContainerCenter]);
 
   const resetZoom = React.useCallback(() => {
+    targetRef.current = { scale: initialScale, x: 0, y: 0 };
     setZoomPan({
       scale: initialScale,
       translateX: 0,
       translateY: 0,
       isImmediate: false,
     });
-  }, [initialScale]);
+    startAnimation();
+  }, [initialScale, startAnimation]);
 
   const centerView = React.useCallback(() => {
     const container = containerRef.current;
@@ -242,8 +287,10 @@ export function ZoomPan({
     if (!container || !content) return;
 
     const contentRect = content.getBoundingClientRect();
-    // Unscaled dimensions
-    const currentScale = zoomPan.scale;
+    // Use current physical scale
+    const currentScale = currentRef.current.scale;
+
+    // Calculate unscaled dimensions
     const contentWidth = contentRect.width / currentScale;
     const contentHeight = contentRect.height / currentScale;
 
@@ -266,13 +313,16 @@ export function ZoomPan({
     const newX = (containerWidth - contentWidth * fitScale) / 2;
     const newY = (containerHeight - contentHeight * fitScale) / 2;
 
+    targetRef.current = { scale: fitScale, x: newX, y: newY };
+
     setZoomPan({
       scale: fitScale,
       translateX: newX,
       translateY: newY,
       isImmediate: false,
     });
-  }, [maxScale, minScale, zoomPan.scale]);
+    startAnimation();
+  }, [maxScale, minScale, startAnimation]);
 
   // -- Mouse Panning --
 
@@ -287,10 +337,18 @@ export function ZoomPan({
       const dx = e.clientX - panStartRef.current.x;
       const dy = e.clientY - panStartRef.current.y;
 
+      // Velocity Calculation (Pixels per ms)
       if (dt > 0) {
+        // We need instantaneous velocity
+        const moveX =
+          e.clientX - (lastInteractionTimeRef.current.x || e.clientX);
+        const moveY =
+          e.clientY - (lastInteractionTimeRef.current.y || e.clientY);
+
+        // Simple smoothing for velocity to avoid spikes
         velocityRef.current = {
-          x: e.clientX - lastInteractionTimeRef.current.x || 0,
-          y: e.clientY - lastInteractionTimeRef.current.y || 0,
+          x: moveX * 0.5, // dampening input velocity slightly
+          y: moveY * 0.5,
         };
       }
 
@@ -305,6 +363,7 @@ export function ZoomPan({
     const handleWindowMouseUp = () => {
       if (isDragging.current) {
         isDragging.current = false;
+        // Loop will continue to run to handle momentum
       }
     };
 
@@ -314,24 +373,33 @@ export function ZoomPan({
       window.removeEventListener("mousemove", handleWindowMouseMove);
       window.removeEventListener("mouseup", handleWindowMouseUp);
     };
-  }, [updateDom, startAnimation]);
+  }, [startAnimation]);
+
+  const lastInteractionTimeRef = React.useRef({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isLoading || (e.button !== 0 && e.button !== 1)) return;
 
     e.preventDefault();
     isDragging.current = true;
+
+    // Kill existing momentum
+    velocityRef.current = { x: 0, y: 0 };
+
     panStartRef.current = { x: e.clientX, y: e.clientY };
     targetStartRef.current = {
       x: targetRef.current.x,
       y: targetRef.current.y,
     };
+
     lastTimeRef.current = performance.now();
+    // eslint-disable-next-line react-hooks/immutability
     lastInteractionTimeRef.current = { x: e.clientX, y: e.clientY };
-    velocityRef.current = { x: 0, y: 0 };
+
     startAnimation();
   };
 
+  // ... Touch logic remains mostly same, just benefits from better loop ...
   const getTouchDistance = (touches: TouchList) => {
     if (touches.length < 2) return 0;
     const dx = touches[0].clientX - touches[1].clientX;
@@ -359,10 +427,11 @@ export function ZoomPan({
       const mouseY = e.clientY - rect.top;
 
       let delta = e.deltaY;
+      // Normalization for different browsers/devices
       if (e.deltaMode === 1) delta *= 40;
       if (e.deltaMode === 2) delta *= 800;
 
-      const ZOOM_SENSITIVITY = 0.002;
+      const ZOOM_SENSITIVITY = 0.0015; // Slightly reduced for control
       const scaleFactor = Math.exp(-delta * ZOOM_SENSITIVITY);
 
       const target = targetRef.current;
@@ -381,6 +450,7 @@ export function ZoomPan({
 
     const onTouchStart = (e: TouchEvent) => {
       const { x, y, scale } = targetRef.current;
+      velocityRef.current = { x: 0, y: 0 };
 
       if (e.touches.length === 1) {
         isDragging.current = true;
@@ -414,18 +484,15 @@ export function ZoomPan({
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
       };
-      velocityRef.current = { x: 0, y: 0 };
       startAnimation();
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      // PREVENT BODY SCROLLING:
       if (e.cancelable) e.preventDefault();
-
       if (!touchStartRef.current) return;
 
       const now = performance.now();
-      const dt = now - lastTimeRef.current;
+      // const dt = now - lastTimeRef.current; // unused locally, logic relies on lastInteraction
 
       if (
         e.touches.length === 1 &&
@@ -434,12 +501,16 @@ export function ZoomPan({
         const dx = e.touches[0].clientX - touchStartRef.current.touches[0].x;
         const dy = e.touches[0].clientY - touchStartRef.current.touches[0].y;
 
-        if (dt > 0) {
-          velocityRef.current = {
-            x: e.touches[0].clientX - lastInteractionTimeRef.current.x || 0,
-            y: e.touches[0].clientY - lastInteractionTimeRef.current.y || 0,
-          };
-        }
+        // Velocity for momentum on release
+        const moveX =
+          e.touches[0].clientX - (lastInteractionTimeRef.current.x || 0);
+        const moveY =
+          e.touches[0].clientY - (lastInteractionTimeRef.current.y || 0);
+
+        velocityRef.current = {
+          x: moveX * 0.5,
+          y: moveY * 0.5,
+        };
 
         targetRef.current.x = touchStartRef.current.translateX + dx;
         targetRef.current.y = touchStartRef.current.translateY + dy;
@@ -500,7 +571,7 @@ export function ZoomPan({
       container.removeEventListener("touchend", onTouchEnd);
       container.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [minScale, maxScale, isLoading, updateDom, startAnimation, zoomPan]); // Added zoomPan to dependencies
+  }, [minScale, maxScale, isLoading, startAnimation]);
 
   const [api, setApi] = React.useState<{
     zoomIn: () => void;
@@ -532,7 +603,7 @@ export function ZoomPan({
         <div
           ref={contentRef}
           style={{
-            transform: `translate(${zoomPan.translateX}px, ${zoomPan.translateY}px) scale(${zoomPan.scale})`,
+            transform: `translate3d(${zoomPan.translateX}px, ${zoomPan.translateY}px, 0) scale(${zoomPan.scale})`,
             transformOrigin: "0 0",
             willChange: "transform",
             transition: zoomPan.isImmediate

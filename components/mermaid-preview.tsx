@@ -1,6 +1,4 @@
 "use client";
-
-import * as React from "react";
 import { Mermaid, type MermaidConfig } from "@/components/mermaid";
 import { ZoomPan } from "@/components/zoom-pan";
 import { Button } from "@/components/ui/button";
