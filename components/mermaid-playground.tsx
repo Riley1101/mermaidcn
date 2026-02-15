@@ -50,7 +50,9 @@ export function MermaidPlayground({
   const [svgOutput, setSvgOutput] = React.useState<string>("");
 
   const { resolvedTheme: siteTheme } = useTheme();
-  const darkMode = siteTheme === "dark";
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const darkMode = mounted && siteTheme === "dark";
 
   // Config object for Mermaid
   const config = React.useMemo<MermaidConfig>(() => {

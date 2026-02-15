@@ -658,6 +658,8 @@ export function DocsPage() {
 function ZoomPanDemo() {
   const [svgOutput, setSvgOutput] = React.useState<string>("");
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   const imageSrc = React.useMemo(() => {
     if (!svgOutput) return "";
@@ -716,7 +718,7 @@ function ZoomPanDemo() {
     >
       <Mermaid
         config={{
-          darkMode: resolvedTheme === "dark",
+          darkMode: mounted && resolvedTheme === "dark",
         }}
         chart={`classDiagram
             class User {
