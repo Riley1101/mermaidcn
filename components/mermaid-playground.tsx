@@ -156,7 +156,7 @@ export function MermaidPlayground({
       </div>
 
       {/* Main Content: Editor + Preview */}
-      <div className="flex min-h-[500px] flex-col md:h-[600px] md:flex-row">
+      <div className="flex min-h-[500px] flex-col h-[500px] md:flex-row">
         {/* Editor */}
         <div className="border-border min-h-[300px] w-full border-b md:h-full md:w-1/2 md:border-b-0 md:border-r">
           <MermaidEditor
